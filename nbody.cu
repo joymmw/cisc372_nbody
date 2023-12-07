@@ -8,8 +8,10 @@
 #include "compute.h"
 
 // represents the objects in the system.  Global variables
-vector3 *hVel, *d_hVel;
-vector3 *hPos, *d_hPos;
+vector3 *hVel;
+vector3 *hPos;
+vector3 *all_values;
+double *d_hPos, *d_hVel, *d_mass;
 double *mass;
 
 //initHostMemory: Create storage for numObjects entities in our system
@@ -102,9 +104,33 @@ int main(int argc, char **argv)
 	#ifdef DEBUG
 	printSystem(stdout);
 	#endif
+		size_t all_values_size = sizeof(vector3) * NUMENTITIES * NUMENTITIES;
+	size_t pos_vel_size = sizeof(double) * NUMENTITIES * 3;
+	size_t mass_size = sizeof(double) * NUMENTITIES;
+   
+	// allocating space for variables to pass to function (device)
+	cudaMalloc((void **)&all_values, all_values_size);
+	cudaMalloc((void **)&d_hPos, pos_vel_size);
+	cudaMalloc((void **)&d_hVel, pos_vel_size);
+	cudaMalloc((void **)&d_mass, mass_size);
+
+	// copy data from host to device
+	cudaMemcpy(d_hPos, hPos, pos_vel_size, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_hVel, hVel, pos_vel_size, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_mass, mass, mass_size, cudaMemcpyHostToDevice);
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
 		compute();
 	}
+	// copy updated data device back to host
+	cudaMemcpy(hPos, d_hPos, pos_vel_size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(hVel, d_hVel, pos_vel_size, cudaMemcpyDeviceToHost);
+	// don't need to copy mass back
+
+	// free memory of variables (device)
+	cudaFree(all_values);
+	cudaFree(d_hPos);
+	cudaFree(d_hVel);
+	cudaFree(d_mass);
 	clock_t t1=clock()-t0;
 #ifdef DEBUG
 	printSystem(stdout);

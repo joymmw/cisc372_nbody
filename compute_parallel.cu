@@ -4,6 +4,8 @@
 #include "config.h"
 #include <cuda_runtime.h>
 
+extern vector3 *all_values;
+extern double *d_hPos, *d_hVel, *d_mass;
 //compute: Updates the positions and locations of the objects in the system based on gravity.
 //Parameters: None
 //Returns: None
@@ -69,22 +71,7 @@ __global__ void add_kernel(vector3 *values, double *hPos, double *hVel, double *
 void compute(){
 	
 	// creating variables (host)
-	vector3 *all_values;
-	double *d_hPos, *d_hVel, *d_mass;
-	size_t all_values_size = sizeof(vector3) * NUMENTITIES * NUMENTITIES;
-	size_t pos_vel_size = sizeof(double) * NUMENTITIES * 3;
-	size_t mass_size = sizeof(double) * NUMENTITIES;
-   
-	// allocating space for variables to pass to function (device)
-	cudaMalloc((void **)&all_values, all_values_size);
-	cudaMalloc((void **)&d_hPos, pos_vel_size);
-	cudaMalloc((void **)&d_hVel, pos_vel_size);
-	cudaMalloc((void **)&d_mass, mass_size);
 
-	// copy data from host to device
-	cudaMemcpy(d_hPos, hPos, pos_vel_size, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_hVel, hVel, pos_vel_size, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_mass, mass, mass_size, cudaMemcpyHostToDevice);
 
 	// kernel call for compute
 	dim3 dimBlock(16, 16);
@@ -95,19 +82,9 @@ void compute(){
 	// kernel call for add
 	add_kernel<<<NUMENTITIES, 1>>>(all_values, d_hPos, d_hVel, d_mass);
 	cudaDeviceSynchronize();
-
+	
 	// what is the reduciton portion?? is it just the addition
 
-	// copy updated data device back to host
-	cudaMemcpy(hPos, d_hPos, pos_vel_size, cudaMemcpyDeviceToHost);
-	cudaMemcpy(hVel, d_hVel, pos_vel_size, cudaMemcpyDeviceToHost);
-	// don't need to copy mass back
-
-	// free memory of variables (device)
-	cudaFree(all_values);
-	cudaFree(d_hPos);
-	cudaFree(d_hVel);
-	cudaFree(d_mass);
 	
 	//free(accels);
 
